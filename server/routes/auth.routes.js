@@ -1,75 +1,110 @@
+/ routes/auth.routes.js
+
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const router = express.Router();
 const userSchema = require("../models/User");
+const authorize = require("../middlewares/auth");
+const { check, validationResult } = require('express-validator');
 
+// Sign-up
+router.post("/register-user",
+    [
+        check('name')
+            .not()
+            .isEmpty()
+            .isLength({ min: 3 })
+            .withMessage('O Nome deve ser pelo menos 6 caracteres longos'),
+        check('email', 'Email é requisitado')
+            .not()
+            .isEmpty(),
+        check('password', 'A senha deve ter pelo menos 5 à 8 caracteres')
+            .not()
+            .isEmpty()
+            .isLength({ min: 5, max: 8 })
+    ],
+    (req, res, next) => {
+        const errors = validationResult(req);
+        console.log(req.body);
 
-//
-
-router.post("/register-user", (req, res, next) => {
-    bcrypt.hash(req.body.password, 10).then((hash) => {
-        const user = new userSchema({
-            name: req.body.name,
-            email: req.body.email,
-            password:hash
-        });
-
-        user.save().then((response) => {
-            res.status(201).json({
-                message: "Usuário criado com sucesso!",
-                result: response
+        if (!errors.isEmpty()) {
+            return res.status(422).jsonp(errors.array());
+        }
+        else {
+            bcrypt.hash(req.body.password, 10).then((hash) => {
+                const user = new userSchema({
+                    name: req.body.name,
+                    email: req.body.email,
+                    password: hash
+                });
+                user.save().then((response) => {
+                    res.status(201).json({
+                        message: "Usuário criado com sucesso!",
+                        result: response
+                    });
+                }).catch(error => {
+                    res.status(500).json({
+                        error: error
+                    });
+                });
             });
-        }).catch(error => {
-            res.status(500).json({
-                error: error
-            });
-        });
+        }
     });
-});
 
-router.post("/signin", (req, res,next) =>{
-    let getUSer;
+
+// Sign-in
+router.post("/signin", (req, res, next) => {
+    let getUser;
     userSchema.findOne({
         email: req.body.email
     }).then(user => {
-        if(!user){
+        if (!user) {
             return res.status(401).json({
                 message: "Autenticação falhou!"
             });
         }
-
+        getUser = user;
+        return bcrypt.compare(req.body.password, user.password);
+    }).then(response => {
+        if (!response) {
+            return res.status(401).json({
+                message: "Autenticação falhou!!"
+            });
+        }
         let jwtToken = jwt.sign({
-            email: getUSer.email,
-            userId: getUSer._id
+            email: getUser.email,
+            userId: getUser._id
         }, "longer-secret-is-better", {
             expiresIn: "1h"
         });
         res.status(200).json({
             token: jwtToken,
             expiresIn: 3600,
-            msg: getUSer
+            _id: getUser._id
         });
     }).catch(err => {
         return res.status(401).json({
-            message: "Autenticação Falhou!"
+            message: "Autenticação falhou!"
         });
     });
 });
 
+// Get Users
 router.route('/').get((req, res) => {
     userSchema.find((error, response) => {
-        if(error){
+        if (error) {
             return next(error)
-        } else{
+        } else {
             res.status(200).json(response)
         }
     })
 })
 
-router.route('./user-profile/id:').get((req,res, next) => {
-    userSchema.findById(req.params.id, (error,data) => {
-        if(error){
+// Get Single User
+router.route('/user-profile/:id').get(authorize, (req, res, next) => {
+    userSchema.findById(req.params.id, (error, data) => {
+        if (error) {
             return next(error);
         } else {
             res.status(200).json({
@@ -79,27 +114,29 @@ router.route('./user-profile/id:').get((req,res, next) => {
     })
 })
 
+// Update User
 router.route('/update-user/:id').put((req, res, next) => {
     userSchema.findByIdAndUpdate(req.params.id, {
         $set: req.body
     }, (error, data) => {
-
-        if(error) {
-        return next(error);
-        console.log(error)
-    } else {
-        res.json(data)
-        console.log('Usuário atualizado com sucesso!')
+        if (error) {
+            return next(error);
+            console.log(error)
+        } else {
+            res.json(data)
+            console.log('Usuário criado com sucesso!')
         }
     })
 })
 
-router.route('/delete-user/:id').delete((req,res, next) => {
-    userSchema.findByIdAndRemove(req.params.id, (error,data) => {
-        if(error){
+
+// Delete User
+router.route('/delete-user/:id').delete((req, res, next) => {
+    userSchema.findByIdAndRemove(req.params.id, (error, data) => {
+        if (error) {
             return next(error);
         } else {
-            res.status(200),json({
+            res.status(200).json({
                 msg: data
             })
         }
