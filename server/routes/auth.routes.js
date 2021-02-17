@@ -1,4 +1,4 @@
-/ routes/auth.routes.js
+// routes/auth.routes.js
 
 const express = require("express");
 const jwt = require("jsonwebtoken");
@@ -8,6 +8,7 @@ const userSchema = require("../models/User");
 const authorize = require("../middlewares/auth");
 const { check, validationResult } = require('express-validator');
 
+
 // Sign-up
 router.post("/register-user",
     [
@@ -15,11 +16,11 @@ router.post("/register-user",
             .not()
             .isEmpty()
             .isLength({ min: 3 })
-            .withMessage('O Nome deve ser pelo menos 6 caracteres longos'),
-        check('email', 'Email é requisitado')
+            .withMessage('Name must be atleast 3 characters long'),
+        check('email', 'Email is required')
             .not()
             .isEmpty(),
-        check('password', 'A senha deve ter pelo menos 5 à 8 caracteres')
+        check('password', 'Password should be between 5 to 8 characters long')
             .not()
             .isEmpty()
             .isLength({ min: 5, max: 8 })
@@ -40,7 +41,7 @@ router.post("/register-user",
                 });
                 user.save().then((response) => {
                     res.status(201).json({
-                        message: "Usuário criado com sucesso!",
+                        message: "User successfully created!",
                         result: response
                     });
                 }).catch(error => {
@@ -61,7 +62,7 @@ router.post("/signin", (req, res, next) => {
     }).then(user => {
         if (!user) {
             return res.status(401).json({
-                message: "Autenticação falhou!"
+                message: "Authentication failed"
             });
         }
         getUser = user;
@@ -69,7 +70,7 @@ router.post("/signin", (req, res, next) => {
     }).then(response => {
         if (!response) {
             return res.status(401).json({
-                message: "Autenticação falhou!!"
+                message: "Authentication failed"
             });
         }
         let jwtToken = jwt.sign({
@@ -81,17 +82,17 @@ router.post("/signin", (req, res, next) => {
         res.status(200).json({
             token: jwtToken,
             expiresIn: 3600,
-            _id: getUser._id
+            msg: getUser
         });
     }).catch(err => {
         return res.status(401).json({
-            message: "Autenticação falhou!"
+            message: "Authentication failed"
         });
     });
 });
 
 // Get Users
-router.route('/').get((req, res) => {
+router.route('/').get(authorize, (req, res) => {
     userSchema.find((error, response) => {
         if (error) {
             return next(error)
@@ -102,7 +103,7 @@ router.route('/').get((req, res) => {
 })
 
 // Get Single User
-router.route('/user-profile/:id').get(authorize, (req, res, next) => {
+router.route('/user-profile/:id').get((req, res, next) => {
     userSchema.findById(req.params.id, (error, data) => {
         if (error) {
             return next(error);
@@ -124,7 +125,7 @@ router.route('/update-user/:id').put((req, res, next) => {
             console.log(error)
         } else {
             res.json(data)
-            console.log('Usuário criado com sucesso!')
+            console.log('User successfully updated!')
         }
     })
 })
