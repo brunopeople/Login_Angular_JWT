@@ -20,7 +20,7 @@ export class AuthService {
   ) {
   }
 
-  // O método que guarda o nome do usuário, email e senha para o banco de dados
+  // Sign-up
   signUp(user: User): Observable<any> {
     let api = `${this.endpoint}/register-user`;
     return this.http.post(api, user)
@@ -29,7 +29,7 @@ export class AuthService {
       )
   }
 
-  // o método que permite ao usuário para acessar o sistem atráves ao token JSON que é gerado pelo API do Node.js
+  // Sign-in
   signIn(user: User) {
     return this.http.post<any>(`${this.endpoint}/signin`, user)
       .subscribe((res: any) => {
@@ -41,7 +41,6 @@ export class AuthService {
       })
   }
 
-  // O token do jwt vem direto da API e é guardado num local storage, então o método é executado.
   getToken() {
     return localStorage.getItem('access_token');
   }
